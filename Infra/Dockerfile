@@ -4,7 +4,6 @@ FROM nvcr.io/nvidia/pytorch:23.08-py3
 # Setting up a working directory ensures any subsequent commands are run from this path inside the container
 WORKDIR /app
 
-
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
