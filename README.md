@@ -1,104 +1,90 @@
 [![Multi-Modality](agorabanner.png)](https://discord.gg/qUtxnK2NMf)
 
-# Python Package Template
-A easy, reliable, fluid template for python packages complete with docs, testing suites, readme's, github workflows, linting and much much more
+# Model-Infra-Template
+A template for deploying ultra powerful LLMs effortlessly with the best optimizations
 
 
-## Installation
+# Model config
 
-You can install the package using pip
 
-```bash
-pip install -e .
+
+# Dockerfile Deployment
+To deploy the PyTorch Docker container, please follow the steps below:
+
+Step 1: Install Prerequisites Before deploying the PyTorch Docker container, ensure that you have the following prerequisites installed on your host system:
+
+Docker Engine
+NVIDIA GPU Drivers
+NVIDIA Container Toolkit
+For specific versions and detailed installation instructions, refer to the Framework Containers Support Matrix and the NVIDIA Container Toolkit Documentation.
+
+Step 2: Pull the Docker Image To pull the PyTorch Docker image, execute the following command:
+
+docker pull nvcr.io/nvidia/pytorch:23.08-py3
+Replace 23.08-py3 with the appropriate version you want to use.
+
+Step 3: Run the Docker Container To run the PyTorch Docker container, use the following command:
+
+If you have Docker 19.03 or later:
+
+docker run --gpus all -it --rm nvcr.io/nvidia/pytorch:23.08-py3
+If you have Docker 19.02 or earlier:
+
+nvidia-docker run -it --rm nvcr.io/nvidia/pytorch:23.08-py3
+Make sure to replace 23.08-py3 with the correct version.
+
+Step 4: Verify PyTorch Installation After running the container, you can verify the PyTorch installation by importing it as a Python module and checking if CUDA is available. Execute the following commands inside the container:
+
+```python
+>>> import torch
+>>> print(torch.cuda.is_available())
+If CUDA is available, it will print "True".
 ```
-## Structure
-```
-├── LICENSE
-├── Makefile
-├── README.md
-├── agorabanner.png
-├── example.py
-├── package
-│   ├── __init__.py
-│   ├── main.py
-│   └── subfolder
-│       ├── __init__.py
-│       └── main.py
-├── pyproject.toml
-└── requirements.txt
+Step 5: Mount External Data and Model Descriptions (Optional) If you need to use data and model descriptions from locations outside the container, you can mount host directories as Docker bind mounts. Use the following command as an example:
 
-2 directories, 11 files
-```
-# Usage
+docker run --gpus all -it --rm -v local_dir:container_dir nvcr.io/nvidia/pytorch:23.08-py3
+Replace local_dir with the path to the local directory and container_dir with the path inside the container.
 
-# Documentation
+Note: If you are using Torch multiprocessing for multi-threaded data loaders, you might need to increase the shared memory size of the container. You can do this by adding --ipc=host or --shm-size= options to the docker run command.
+
+That's it! You have successfully deployed the PyTorch Docker container. You can now start using PyTorch for deep learning tasks.
+
+For more information on customizing your PyTorch image and additional details, refer to the /workspace/README.md file inside the container.
 
 
-### Code Quality 🧹
+To create a ready-to-use Dockerfile to deploy the production-grade model located in model/app.py, you can use the following Dockerfile:
 
-We provide two handy commands inside the `Makefile`, namely:
+# Use the PyTorch NGC Container as the base image
+FROM nvcr.io/nvidia/pytorch:23.08-py3
 
-- `make style` to format the code
-- `make check_code_quality` to check code quality (PEP8 basically)
+# Set the working directory inside the container
+WORKDIR /app
 
-So far, **there is no types checking with mypy**. See [issue](https://github.com/roboflow-ai/template-python/issues/4). 
+# Copy the model file into the container
+COPY model/app.py .
 
-### Tests 🧪
+# Expose the desired port (if necessary)
+EXPOSE 8080
 
-[`pytests`](https://docs.pytest.org/en/7.1.x/) is used to run our tests.
+# Set the entrypoint command to run the model
+CMD ["python", "app.py"]
+This Dockerfile starts from the PyTorch NGC Container with the specified version (23.08-py3). It sets the working directory inside the container to /app and copies the model file app.py into the container. If your model requires any additional dependencies or files, you should include instructions to install or copy them as well.
 
-### Publish on PyPi 🚀
+The EXPOSE command is optional and should only be included if your model needs to listen on a specific port inside the container.
 
-**Important**: Before publishing, edit `__version__` in [src/__init__](/src/__init__.py) to match the wanted new version.
+Finally, the CMD command specifies the command to execute when the container starts, which in this case is running the model using Python.
 
-We use [`twine`](https://twine.readthedocs.io/en/stable/) to make our life easier. You can publish by using
+You can build the Docker image using the following command:
 
-```
-export PYPI_USERNAME="you_username"
-export PYPI_PASSWORD="your_password"
-export PYPI_TEST_PASSWORD="your_password_for_test_pypi"
-make publish -e PYPI_USERNAME=$PYPI_USERNAME -e PYPI_PASSWORD=$PYPI_PASSWORD -e PYPI_TEST_PASSWORD=$PYPI_TEST_PASSWORD
-```
+docker build -t my_model .
+After the image is built, you can run the container using the following command:
 
-You can also use token for auth, see [pypi doc](https://pypi.org/help/#apitoken). In that case,
+docker run --gpus all -it --rm -p 8080:8080 my_model
+Replace 8080 with the desired port if necessary.
 
-```
-export PYPI_USERNAME="__token__"
-export PYPI_PASSWORD="your_token"
-export PYPI_TEST_PASSWORD="your_token_for_test_pypi"
-make publish -e PYPI_USERNAME=$PYPI_USERNAME -e PYPI_PASSWORD=$PYPI_PASSWORD -e PYPI_TEST_PASSWORD=$PYPI_TEST_PASSWORD
-```
+This will start the container and deploy your production-grade model specified in model/app.py.
 
-**Note**: We will try to push to [test pypi](https://test.pypi.org/) before pushing to pypi, to assert everything will work
-
-### CI/CD 🤖
-
-We use [GitHub actions](https://github.com/features/actions) to automatically run tests and check code quality when a new PR is done on `main`.
-
-On any pull request, we will check the code quality and tests.
-
-When a new release is created, we will try to push the new code to PyPi. We use [`twine`](https://twine.readthedocs.io/en/stable/) to make our life easier. 
-
-The **correct steps** to create a new realease are the following:
-- edit `__version__` in [src/__init__](/src/__init__.py) to match the wanted new version.
-- create a new [`tag`](https://git-scm.com/docs/git-tag) with the release name, e.g. `git tag v0.0.1 && git push origin v0.0.1` or from the GitHub UI.
-- create a new release from GitHub UI
-
-The CI will run when you create the new release.
-
-# Docs
-We use MK docs. This repo comes with the zeta docs. All the docs configurations are already here along with the readthedocs configs
-
-# Q&A
-
-## Why no cookiecutter?
-This is a template repo, it's meant to be used inside GitHub upon repo creation.
-
-## Why reinvent the wheel?
-
-There are several very good templates on GitHub, I prefer to use code we wrote instead of blinding taking the most starred template and having features we don't need. From experience, it's better to keep it simple and general enough for our specific use cases.
-
-# Architecture
+Note: Make sure you have Docker Engine, NVIDIA GPU Drivers, and NVIDIA Container Toolkit installed on your host system as mentioned in the prerequisites section.
 
 # License
 MIT
